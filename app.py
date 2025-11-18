@@ -11,6 +11,7 @@ st.set_page_config(page_title="NBA Smart Better", layout="wide")
 
 # --- SIDEBAR SETTINGS ---
 st.sidebar.header("⚙️ Settings")
+# Default value set to your key
 api_key = st.sidebar.text_input("The-Odds-API Key", value="b412e4d9246309c4aac12e3a6bdfee44", type="password")
 market = st.sidebar.selectbox("Market", ["player_points", "player_rebounds", "player_assists"])
 bookmaker = st.sidebar.selectbox("Sportsbook", ["draftkings", "fanduel"])
@@ -43,43 +44,50 @@ def get_league_defense():
         return {}
 
 def get_odds(api_key, market, bookmaker):
-    games = requests.get(
-        "https://api.the-odds-api.com/v4/sports/basketball_nba/odds", 
-        params={'apiKey': api_key, 'regions': 'us', 'markets': 'h2h'}
-    ).json()
-    
-    if not games or 'message' in games: return []
-    
-    all_props = []
-    prog_bar = st.progress(0)
-    
-    for i, game in enumerate(games):
-        game_id = game['id']
-        matchup = f"{game['away_team']} @ {game['home_team']}"
+    try:
+        games = requests.get(
+            "https://api.the-odds-api.com/v4/sports/basketball_nba/odds", 
+            params={'apiKey': api_key, 'regions': 'us', 'markets': 'h2h'}
+        ).json()
         
-        r = requests.get(
-            f"https://api.the-odds-api.com/v4/sports/basketball_nba/events/{game_id}/odds",
-            params={'apiKey': api_key, 'regions': 'us', 'markets': market, 'bookmakers': bookmaker}
-        )
+        if not games or 'message' in games: return []
         
-        if r.status_code == 200:
-            data = r.json()
-            for bookie in data['bookmakers']:
-                for m in bookie['markets']:
-                    if m['key'] == market:
-                        for outcome in m['outcomes']:
-                            all_props.append({
-                                'Player': outcome['description'],
-                                'Line': outcome.get('point', 0.0),
-                                'Odds': outcome['price'],
-                                'Matchup': matchup
-                            })
-        # Update progress bar
-        prog_bar.progress((i + 1) / len(games))
-        time.sleep(0.1)
-    
-    prog_bar.empty()
-    return all_props
+        all_props = []
+        # Create progress bar
+        prog_bar = st.progress(0)
+        total_games = len(games)
+        
+        for i, game in enumerate(games):
+            game_id = game['id']
+            matchup = f"{game['away_team']} @ {game['home_team']}"
+            
+            r = requests.get(
+                f"https://api.the-odds-api.com/v4/sports/basketball_nba/events/{game_id}/odds",
+                params={'apiKey': api_key, 'regions': 'us', 'markets': market, 'bookmakers': bookmaker}
+            )
+            
+            if r.status_code == 200:
+                data = r.json()
+                for bookie in data['bookmakers']:
+                    for m in bookie['markets']:
+                        if m['key'] == market:
+                            for outcome in m['outcomes']:
+                                all_props.append({
+                                    'Player': outcome['description'],
+                                    'Line': outcome.get('point', 0.0),
+                                    'Odds': outcome['price'],
+                                    'Matchup': matchup
+                                })
+            # Safe progress update
+            if total_games > 0:
+                prog_bar.progress(min((i + 1) / total_games, 1.0))
+            time.sleep(0.1)
+        
+        prog_bar.empty()
+        return all_props
+    except Exception as e:
+        st.error(f"Error fetching odds: {e}")
+        return []
 
 def analyze_player(row, def_rankings, market):
     player_name = row['Player']
@@ -152,11 +160,19 @@ if st.button("🚀 RUN ANALYSIS (Takes ~90 Seconds)"):
         
         results = []
         my_bar = st.progress(0)
+        total_players = len(df_all)
         
-        for i, row in df_all.iterrows():
+        # --- FIXED LOOP HERE ---
+        # We use enumerate() to get a clean count (i) regardless of dataframe index
+        for i, (index, row) in enumerate(df_all.iterrows()):
             res = analyze_player(row, def_rankings, market)
             if res: results.append(res)
-            my_bar.progress((i + 1) / len(df_all))
+            
+            # Safe progress bar update
+            if total_players > 0:
+                progress_val = min((i + 1) / total_players, 1.0)
+                my_bar.progress(progress_val)
+                
             time.sleep(0.1) # Rate limit safety
             
         my_bar.empty()
