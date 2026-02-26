@@ -1,8 +1,9 @@
 import sys
 import subprocess
-import time
 import base64
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
+from functools import lru_cache
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
@@ -171,9 +172,10 @@ st.markdown(
 )
 
 
-def safe_get_json(url: str, params: dict, timeout: int = 20) -> Tuple[Optional[dict], Optional[str], int]:
+def safe_get_json(url: str, params: dict, timeout: int = 20, session: Optional[requests.Session] = None) -> Tuple[Optional[dict], Optional[str], int]:
     try:
-        response = requests.get(url, params=params, timeout=timeout)
+        requester = session.get if session else requests.get
+        response = requester(url, params=params, timeout=timeout)
         status_code = response.status_code
         if status_code != 200:
             return None, f"HTTP {status_code}", status_code
@@ -201,93 +203,106 @@ def get_odds(api_key: str, market: str, bookmaker: str) -> Tuple[pd.DataFrame, L
     validation_notes: List[str] = []
     fetched_at = datetime.now(timezone.utc)
 
-    games_payload, err, _ = safe_get_json(
-        "https://api.the-odds-api.com/v4/sports/basketball_nba/odds",
-        {"apiKey": api_key, "regions": "us", "markets": "h2h"},
-    )
-    if err:
-        validation_notes.append(f"Failed to load NBA games list ({err}).")
-        return pd.DataFrame(), validation_notes, fetched_at
-
-    if not isinstance(games_payload, list):
-        validation_notes.append("Unexpected games payload format from odds API.")
-        return pd.DataFrame(), validation_notes, fetched_at
-
-    records: List[dict] = []
-    progress = st.progress(0.0)
-
-    for idx, game in enumerate(games_payload):
-        game_id = game.get("id")
-        home = game.get("home_team")
-        away = game.get("away_team")
-        commence = game.get("commence_time")
-
-        if not game_id or not home or not away:
-            validation_notes.append("Skipped a game with missing identifiers/team names.")
-            continue
-
-        event_payload, event_err, status_code = safe_get_json(
-            f"https://api.the-odds-api.com/v4/sports/basketball_nba/events/{game_id}/odds",
-            {"apiKey": api_key, "regions": "us", "markets": market, "bookmakers": bookmaker},
+    with requests.Session() as session:
+        games_payload, err, _ = safe_get_json(
+            "https://api.the-odds-api.com/v4/sports/basketball_nba/odds",
+            {"apiKey": api_key, "regions": "us", "markets": "h2h"},
+            session=session,
         )
 
-        if event_err:
-            validation_notes.append(f"Skipped game {away} @ {home} ({event_err}).")
-            continue
+        if err:
+            validation_notes.append(f"Failed to load NBA games list ({err}).")
+            return pd.DataFrame(), validation_notes, fetched_at
 
-        bookmakers = event_payload.get("bookmakers", []) if isinstance(event_payload, dict) else []
-        if not bookmakers:
-            validation_notes.append(f"No bookmaker market data returned for {away} @ {home}.")
-            continue
+        if not isinstance(games_payload, list):
+            validation_notes.append("Unexpected games payload format from odds API.")
+            return pd.DataFrame(), validation_notes, fetched_at
 
-        for book in bookmakers:
-            for market_obj in book.get("markets", []):
-                if market_obj.get("key") != market:
-                    continue
-                for outcome in market_obj.get("outcomes", []):
-                    player_name = outcome.get("description")
-                    line = outcome.get("point")
-                    odds_price = outcome.get("price")
+        def fetch_event(game: dict) -> Tuple[List[dict], List[str]]:
+            local_notes: List[str] = []
+            local_records: List[dict] = []
+            game_id = game.get("id")
+            home = game.get("home_team")
+            away = game.get("away_team")
+            commence = game.get("commence_time")
 
-                    # strict validation before display
-                    if not isinstance(player_name, str) or not player_name.strip():
-                        validation_notes.append(f"Rejected prop with missing player name in {away} @ {home}.")
+            if not game_id or not home or not away:
+                local_notes.append("Skipped a game with missing identifiers/team names.")
+                return local_records, local_notes
+
+            event_payload, event_err, status_code = safe_get_json(
+                f"https://api.the-odds-api.com/v4/sports/basketball_nba/events/{game_id}/odds",
+                {"apiKey": api_key, "regions": "us", "markets": market, "bookmakers": bookmaker},
+                session=session,
+            )
+
+            if event_err:
+                local_notes.append(f"Skipped game {away} @ {home} ({event_err}).")
+                return local_records, local_notes
+
+            bookmakers = event_payload.get("bookmakers", []) if isinstance(event_payload, dict) else []
+            if not bookmakers:
+                local_notes.append(f"No bookmaker market data returned for {away} @ {home}.")
+                return local_records, local_notes
+
+            for book in bookmakers:
+                for market_obj in book.get("markets", []):
+                    if market_obj.get("key") != market:
                         continue
-                    if line is None or not isinstance(line, (int, float)) or line <= 0:
-                        validation_notes.append(f"Rejected invalid line for {player_name} ({line}).")
-                        continue
-                    if not isinstance(odds_price, (int, float)):
-                        validation_notes.append(f"Rejected invalid odds price for {player_name}.")
-                        continue
+                    for outcome in market_obj.get("outcomes", []):
+                        player_name = outcome.get("description")
+                        line = outcome.get("point")
+                        odds_price = outcome.get("price")
 
-                    records.append(
-                        {
-                            "Player": player_name.strip(),
-                            "Line": float(line),
-                            "Odds": int(odds_price),
-                            "Matchup": f"{away} @ {home}",
-                            "GameTimeUTC": commence,
-                            "Bookmaker": book.get("title", bookmaker.title()),
-                            "OddsCheckedAtUTC": fetched_at.isoformat(),
-                            "EventStatusCode": status_code,
-                        }
-                    )
+                        if not isinstance(player_name, str) or not player_name.strip():
+                            local_notes.append(f"Rejected prop with missing player name in {away} @ {home}.")
+                            continue
+                        if line is None or not isinstance(line, (int, float)) or line <= 0:
+                            local_notes.append(f"Rejected invalid line for {player_name} ({line}).")
+                            continue
+                        if not isinstance(odds_price, (int, float)):
+                            local_notes.append(f"Rejected invalid odds price for {player_name}.")
+                            continue
 
-        if games_payload:
-            progress.progress(min((idx + 1) / len(games_payload), 1.0))
-        time.sleep(0.08)
+                        local_records.append(
+                            {
+                                "Player": player_name.strip(),
+                                "Line": float(line),
+                                "Odds": int(odds_price),
+                                "Matchup": f"{away} @ {home}",
+                                "GameTimeUTC": commence,
+                                "Bookmaker": book.get("title", bookmaker.title()),
+                                "OddsCheckedAtUTC": fetched_at.isoformat(),
+                                "EventStatusCode": status_code,
+                            }
+                        )
+            return local_records, local_notes
 
-    progress.empty()
-    if not records:
+        all_records: List[dict] = []
+        progress = st.progress(0.0)
+        total_games = len(games_payload)
+
+        with ThreadPoolExecutor(max_workers=8) as executor:
+            futures = [executor.submit(fetch_event, g) for g in games_payload]
+            for idx, future in enumerate(as_completed(futures), start=1):
+                records, notes = future.result()
+                all_records.extend(records)
+                validation_notes.extend(notes)
+                if total_games:
+                    progress.progress(min(idx / total_games, 1.0))
+
+        progress.empty()
+
+    if not all_records:
         return pd.DataFrame(), validation_notes, fetched_at
 
-    df = pd.DataFrame(records)
-    # second-pass consistency validation
+    df = pd.DataFrame(all_records)
     df = df.drop_duplicates(subset=["Player", "Matchup", "Line", "Odds"]).reset_index(drop=True)
     df = df[(df["Line"] > 0) & (df["Line"] < 80)]
     return df, validation_notes, fetched_at
 
 
+@lru_cache(maxsize=2048)
 def resolve_player_id(player_name: str) -> Optional[int]:
     candidates = [
         player_name,
@@ -302,7 +317,16 @@ def resolve_player_id(player_name: str) -> Optional[int]:
     return None
 
 
-def analyze_player(row: pd.Series, defense_rankings: Dict[str, float], market: str, min_games: int) -> Optional[dict]:
+@st.cache_data(ttl=1800, show_spinner=False)
+def get_player_logs(player_id: int, season: str) -> pd.DataFrame:
+    try:
+        logs = playergamelog.PlayerGameLog(player_id=player_id, season=season).get_data_frames()[0]
+        return logs if isinstance(logs, pd.DataFrame) else pd.DataFrame()
+    except Exception:
+        return pd.DataFrame()
+
+
+def analyze_player(row: dict, defense_rankings: Dict[str, float], market: str, min_games: int) -> Optional[dict]:
     player_name = row["Player"]
     pid = resolve_player_id(player_name)
     if not pid:
@@ -310,7 +334,7 @@ def analyze_player(row: pd.Series, defense_rankings: Dict[str, float], market: s
 
     stat_col = MARKET_CONFIG[market]["column"]
     try:
-        logs = playergamelog.PlayerGameLog(player_id=pid, season=SEASON).get_data_frames()[0]
+        logs = get_player_logs(pid, SEASON).copy()
         if logs.empty or stat_col not in logs.columns or "GAME_DATE" not in logs.columns:
             return None
         logs = logs.dropna(subset=[stat_col, "GAME_DATE"]).copy()
@@ -387,17 +411,21 @@ if run_clicked:
         st.stop()
 
     status.info("Cross-checking player data and computing confidence scores...")
-    deduped_props = odds_df.sort_values("Odds Checked AtUTC" if "Odds Checked AtUTC" in odds_df.columns else "OddsCheckedAtUTC", ascending=False).drop_duplicates(subset=["Player", "Matchup"])
+    deduped_props = odds_df.sort_values("OddsCheckedAtUTC", ascending=False).drop_duplicates(subset=["Player", "Matchup"])
     results: List[dict] = []
     progress = st.progress(0.0)
 
-    for idx, (_, row) in enumerate(deduped_props.iterrows()):
-        analyzed = analyze_player(row, defense_rankings, market, min_recent_games)
-        if analyzed:
-            results.append(analyzed)
-        if len(deduped_props) > 0:
-            progress.progress(min((idx + 1) / len(deduped_props), 1.0))
-        time.sleep(0.05)
+    prop_rows = deduped_props.to_dict(orient="records")
+    total_props = len(prop_rows)
+
+    with ThreadPoolExecutor(max_workers=6) as executor:
+        futures = [executor.submit(analyze_player, row, defense_rankings, market, min_recent_games) for row in prop_rows]
+        for idx, future in enumerate(as_completed(futures), start=1):
+            analyzed = future.result()
+            if analyzed:
+                results.append(analyzed)
+            if total_props:
+                progress.progress(min(idx / total_props, 1.0))
 
     progress.empty()
     status.empty()
