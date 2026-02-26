@@ -26,6 +26,19 @@ def add_validation_note(notes: List[str], message: str) -> None:
         notes.append(message)
 
 
+
+
+def find_unresolved_merge_files(root: Path) -> List[str]:
+    conflict_tokens = ("<<<<<<<", "=======", ">>>>>>>")
+    flagged: List[str] = []
+    for fp in root.rglob("*.py"):
+        try:
+            text = fp.read_text(encoding="utf-8")
+        except Exception:
+            continue
+        if any(token in text for token in conflict_tokens):
+            flagged.append(str(fp.relative_to(root)))
+    return flagged
 def to_data_uri(path: str) -> str:
     image_path = Path(path)
     if not image_path.exists():
@@ -41,6 +54,13 @@ logo_uri = to_data_uri(LOGO_PATH)
 
 if not Path("assets").exists():
     Path("assets").mkdir(parents=True, exist_ok=True)
+
+
+conflict_files = find_unresolved_merge_files(Path(__file__).resolve().parent)
+if conflict_files:
+    st.error("Unresolved merge markers were detected. Please resolve conflicts before running analysis.")
+    st.code("\n".join(conflict_files))
+    st.stop()
 
 CUSTOM_CSS = """
 <style>
