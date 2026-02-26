@@ -16,6 +16,14 @@ st.set_page_config(page_title="NBA Smart Better", layout="wide", page_icon="🏀
 
 POSTER_PATH = "assets/pregamegenee_poster.png"
 LOGO_PATH = "assets/pregamegenee_logo.png"
+MAX_VALIDATION_NOTES = 200
+ODDS_FETCH_WORKERS = 6
+ANALYSIS_WORKERS = 6
+
+
+def add_validation_note(notes: List[str], message: str) -> None:
+    if len(notes) < MAX_VALIDATION_NOTES:
+        notes.append(message)
 
 
 def to_data_uri(path: str) -> str:
@@ -203,95 +211,98 @@ def get_odds(api_key: str, market: str, bookmaker: str) -> Tuple[pd.DataFrame, L
     validation_notes: List[str] = []
     fetched_at = datetime.now(timezone.utc)
 
-    with requests.Session() as session:
-        games_payload, err, _ = safe_get_json(
-            "https://api.the-odds-api.com/v4/sports/basketball_nba/odds",
-            {"apiKey": api_key, "regions": "us", "markets": "h2h"},
-            session=session,
-        )
+    games_payload, err, _ = safe_get_json(
+        "https://api.the-odds-api.com/v4/sports/basketball_nba/odds",
+        {"apiKey": api_key, "regions": "us", "markets": "h2h"},
+    )
 
-        if err:
-            validation_notes.append(f"Failed to load NBA games list ({err}).")
-            return pd.DataFrame(), validation_notes, fetched_at
+    if err:
+        add_validation_note(validation_notes, f"Failed to load NBA games list ({err}).")
+        return pd.DataFrame(), validation_notes, fetched_at
 
-        if not isinstance(games_payload, list):
-            validation_notes.append("Unexpected games payload format from odds API.")
-            return pd.DataFrame(), validation_notes, fetched_at
+    if not isinstance(games_payload, list):
+        add_validation_note(validation_notes, "Unexpected games payload format from odds API.")
+        return pd.DataFrame(), validation_notes, fetched_at
 
-        def fetch_event(game: dict) -> Tuple[List[dict], List[str]]:
-            local_notes: List[str] = []
-            local_records: List[dict] = []
-            game_id = game.get("id")
-            home = game.get("home_team")
-            away = game.get("away_team")
-            commence = game.get("commence_time")
+    def fetch_event(game: dict) -> Tuple[List[dict], List[str]]:
+        local_notes: List[str] = []
+        local_records: List[dict] = []
 
-            if not game_id or not home or not away:
-                local_notes.append("Skipped a game with missing identifiers/team names.")
-                return local_records, local_notes
+        game_id = game.get("id")
+        home = game.get("home_team")
+        away = game.get("away_team")
+        commence = game.get("commence_time")
 
-            event_payload, event_err, status_code = safe_get_json(
-                f"https://api.the-odds-api.com/v4/sports/basketball_nba/events/{game_id}/odds",
-                {"apiKey": api_key, "regions": "us", "markets": market, "bookmakers": bookmaker},
-                session=session,
-            )
-
-            if event_err:
-                local_notes.append(f"Skipped game {away} @ {home} ({event_err}).")
-                return local_records, local_notes
-
-            bookmakers = event_payload.get("bookmakers", []) if isinstance(event_payload, dict) else []
-            if not bookmakers:
-                local_notes.append(f"No bookmaker market data returned for {away} @ {home}.")
-                return local_records, local_notes
-
-            for book in bookmakers:
-                for market_obj in book.get("markets", []):
-                    if market_obj.get("key") != market:
-                        continue
-                    for outcome in market_obj.get("outcomes", []):
-                        player_name = outcome.get("description")
-                        line = outcome.get("point")
-                        odds_price = outcome.get("price")
-
-                        if not isinstance(player_name, str) or not player_name.strip():
-                            local_notes.append(f"Rejected prop with missing player name in {away} @ {home}.")
-                            continue
-                        if line is None or not isinstance(line, (int, float)) or line <= 0:
-                            local_notes.append(f"Rejected invalid line for {player_name} ({line}).")
-                            continue
-                        if not isinstance(odds_price, (int, float)):
-                            local_notes.append(f"Rejected invalid odds price for {player_name}.")
-                            continue
-
-                        local_records.append(
-                            {
-                                "Player": player_name.strip(),
-                                "Line": float(line),
-                                "Odds": int(odds_price),
-                                "Matchup": f"{away} @ {home}",
-                                "GameTimeUTC": commence,
-                                "Bookmaker": book.get("title", bookmaker.title()),
-                                "OddsCheckedAtUTC": fetched_at.isoformat(),
-                                "EventStatusCode": status_code,
-                            }
-                        )
+        if not game_id or not home or not away:
+            add_validation_note(local_notes, "Skipped a game with missing identifiers/team names.")
             return local_records, local_notes
 
-        all_records: List[dict] = []
-        progress = st.progress(0.0)
-        total_games = len(games_payload)
+        event_payload, event_err, status_code = safe_get_json(
+            f"https://api.the-odds-api.com/v4/sports/basketball_nba/events/{game_id}/odds",
+            {"apiKey": api_key, "regions": "us", "markets": market, "bookmakers": bookmaker},
+        )
 
-        with ThreadPoolExecutor(max_workers=8) as executor:
-            futures = [executor.submit(fetch_event, g) for g in games_payload]
-            for idx, future in enumerate(as_completed(futures), start=1):
-                records, notes = future.result()
-                all_records.extend(records)
-                validation_notes.extend(notes)
-                if total_games:
-                    progress.progress(min(idx / total_games, 1.0))
+        if event_err:
+            add_validation_note(local_notes, f"Skipped game {away} @ {home} ({event_err}).")
+            return local_records, local_notes
 
-        progress.empty()
+        if not isinstance(event_payload, dict):
+            add_validation_note(local_notes, f"Unexpected event payload for {away} @ {home}.")
+            return local_records, local_notes
+
+        bookmakers = event_payload.get("bookmakers", [])
+        if not bookmakers:
+            add_validation_note(local_notes, f"No bookmaker market data returned for {away} @ {home}.")
+            return local_records, local_notes
+
+        for book in bookmakers:
+            for market_obj in book.get("markets", []):
+                if market_obj.get("key") != market:
+                    continue
+                for outcome in market_obj.get("outcomes", []):
+                    player_name = outcome.get("description")
+                    line = outcome.get("point")
+                    odds_price = outcome.get("price")
+
+                    if not isinstance(player_name, str) or not player_name.strip():
+                        add_validation_note(local_notes, f"Rejected prop with missing player name in {away} @ {home}.")
+                        continue
+                    if line is None or not isinstance(line, (int, float)) or line <= 0:
+                        add_validation_note(local_notes, f"Rejected invalid line for {player_name} ({line}).")
+                        continue
+                    if not isinstance(odds_price, (int, float)):
+                        add_validation_note(local_notes, f"Rejected invalid odds price for {player_name}.")
+                        continue
+
+                    local_records.append(
+                        {
+                            "Player": player_name.strip(),
+                            "Line": float(line),
+                            "Odds": int(odds_price),
+                            "Matchup": f"{away} @ {home}",
+                            "GameTimeUTC": commence,
+                            "Bookmaker": book.get("title", bookmaker.title()),
+                            "OddsCheckedAtUTC": fetched_at.isoformat(),
+                            "EventStatusCode": status_code,
+                        }
+                    )
+
+        return local_records, local_notes
+
+    all_records: List[dict] = []
+    progress = st.progress(0.0)
+    total_games = len(games_payload)
+
+    with ThreadPoolExecutor(max_workers=ODDS_FETCH_WORKERS) as executor:
+        futures = [executor.submit(fetch_event, game) for game in games_payload]
+        for idx, future in enumerate(as_completed(futures), start=1):
+            records, notes = future.result()
+            all_records.extend(records)
+            validation_notes.extend(notes)
+            if total_games:
+                progress.progress(min(idx / total_games, 1.0))
+
+    progress.empty()
 
     if not all_records:
         return pd.DataFrame(), validation_notes, fetched_at
@@ -418,7 +429,7 @@ if run_clicked:
     prop_rows = deduped_props.to_dict(orient="records")
     total_props = len(prop_rows)
 
-    with ThreadPoolExecutor(max_workers=6) as executor:
+    with ThreadPoolExecutor(max_workers=ANALYSIS_WORKERS) as executor:
         futures = [executor.submit(analyze_player, row, defense_rankings, market, min_recent_games) for row in prop_rows]
         for idx, future in enumerate(as_completed(futures), start=1):
             analyzed = future.result()
