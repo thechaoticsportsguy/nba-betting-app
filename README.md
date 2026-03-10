@@ -1,58 +1,42 @@
-# NBA Live Hub (Next.js + TypeScript)
+# NBA Live Dashboard (Next.js + TypeScript + Tailwind)
 
-A Vercel-deployable Next.js App Router project that renders:
+This project uses Next.js App Router and server API routes to render:
 
-- Live NBA games
-- Team logos
-- Player headshots
-- Current score, quarter, game clock
-- Team news headlines
-- Featured game section
+- Live games (ESPN scoreboard)
+- Clickable game cards
+- Right-side live box score panel
+- Player stat tables
+- Betting markets (moneyline, spread, totals)
 
-## Stack
+## API Routes
 
-- Next.js (App Router)
-- TypeScript
-- Tailwind CSS
-- API routes (`/app/api/*`)
-- React Server Components + client refresh hook
+- `/api/live-games` → ESPN scoreboard (refresh target: 15s)
+- `/api/live-boxscore` → BallDontLie live box scores (refresh target: 10s)
+- `/api/player/[id]` → BallDontLie player profile
+- `/api/odds` → The Odds API (refresh target: 30s)
 
-## Run locally
+## Environment Variables
+
+Create `.env.local`:
+
+```bash
+BALLDONTLIE_API_KEY=5961d28b-ac82-4980-ba1e-de7454c1511a
+ODDS_API_KEY=b412e4d9246309c4aac12e3a6bdfee44
+```
+
+## Run
 
 ```bash
 npm install
 npm run dev
 ```
 
-Build test:
+## Build
 
 ```bash
 npm run build
 ```
 
-## Real-time refresh strategy
+## Vercel
 
-`hooks/useLiveGames.ts` polls `/api/games` every 10 seconds to keep the live games grid updated.
-
-## Mock data location
-
-- `data/games.json`
-- `data/teams.json`
-- `data/players.json`
-- `data/news.json`
-
-## Replace mock data with real NBA APIs later
-
-1. Add server-side API keys to `.env.local`:
-   - `NBA_API_KEY=...`
-   - `NBA_NEWS_API_KEY=...`
-2. Update `lib/data.ts` to fetch from external providers instead of local JSON.
-3. Keep component interfaces unchanged (`lib/types.ts`) so UI does not need refactor.
-4. Add response mapping from provider payloads to local types (`Game`, `Team`, `Player`, `NewsArticle`).
-5. Keep `/app/api/*` routes as your server abstraction boundary for frontend stability.
-
-## Vercel deployment
-
-Push to GitHub and connect the repo in Vercel. Every merge to your production branch triggers:
-
-GitHub PR merge → Vercel build (`npm run build`) → redeploy.
+Deploy normally on Vercel. The project is App Router based and uses server API routes compatible with Vercel.
