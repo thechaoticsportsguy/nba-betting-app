@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { normalizePlayerProfile } from '@/lib/balldontlie';
 
 const BALLDONTLIE_KEY = process.env.BALLDONTLIE_API_KEY;
+const BALLDONTLIE_KEY = process.env.BALLDONTLIE_API_KEY ?? '5961d28b-ac82-4980-ba1e-de7454c1511a';
 
 export const revalidate = 3600;
 

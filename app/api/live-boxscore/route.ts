@@ -3,6 +3,7 @@ import { normalizeLiveBoxScores } from '@/lib/balldontlie';
 
 const BALLDONTLIE_BOX_URL = 'https://api.balldontlie.io/v1/box_scores/live';
 const BALLDONTLIE_KEY = process.env.BALLDONTLIE_API_KEY;
+const BALLDONTLIE_KEY = process.env.BALLDONTLIE_API_KEY ?? '5961d28b-ac82-4980-ba1e-de7454c1511a';
 
 export const revalidate = 12;
 

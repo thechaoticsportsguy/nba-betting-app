@@ -21,6 +21,12 @@ const defaultFilters: AnalysisFilterState = {
 export default function HomePage() {
   const [activeTab, setActiveTab] = useState<DashboardTab>('live');
 
+import { useEffect, useState } from 'react';
+import GameCard from '@/components/GameCard';
+import GameDrawer from '@/components/GameDrawer';
+import { ESPNGame } from '@/lib/types';
+
+export default function HomePage() {
   const [games, setGames] = useState<ESPNGame[]>([]);
   const [selectedGame, setSelectedGame] = useState<ESPNGame | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -156,10 +162,59 @@ export default function HomePage() {
               </>
             ) : null}
           </div>
+        <p className="mb-6 text-sm text-slate-400">Live games, box scores, player stats, betting odds — synced in one flow.</p>
+
+        {error ? <p className="mb-4 rounded-md bg-red-500/10 px-3 py-2 text-sm text-red-300">{error}</p> : null}
+
+        {loading ? (
+          <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {Array.from({ length: 6 }).map((_, idx) => (
+              <div key={idx} className="h-44 animate-pulse rounded-2xl bg-slate-800" />
+            ))}
+          </section>
+        ) : games.length === 0 ? (
+          <p className="rounded-xl border border-slate-800 bg-slate-900 p-4 text-slate-300">No live or upcoming NBA games currently available.</p>
+        ) : (
+          <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {games.map((game) => (
+              <GameCard key={game.id} game={game} onClick={setSelectedGame} />
+            ))}
+          </section>
         )}
       </div>
 
       <GameDrawer game={selectedGame} onClose={() => setSelectedGame(null)} />
+export const dynamic = 'force-dynamic';
+import { headers } from 'next/headers';
+import Navbar from '@/components/Navbar';
+import LiveScoreboard from '@/components/LiveScoreboard';
+import OddsTicker from '@/components/OddsTicker';
+
+async function getLiveGames(baseUrl: string) {
+  const res = await fetch(`${baseUrl}/api/live-games`, { next: { revalidate: 30 } });
+  if (!res.ok) return { games: [] };
+  return res.json();
+}
+
+async function getOdds(baseUrl: string) {
+  const res = await fetch(`${baseUrl}/api/odds`, { next: { revalidate: 30 } });
+  if (!res.ok) return { odds: [] };
+  return res.json();
+}
+
+export default async function HomePage() {
+  const host = headers().get('host') ?? 'localhost:3000';
+  const baseUrl = /^(localhost|127\.0\.0\.1)/.test(host) ? `http://${host}` : `https://${host}`;
+  const [{ games }, { odds }] = await Promise.all([getLiveGames(baseUrl), getOdds(baseUrl)]);
+
+  return (
+    <main>
+      <Navbar />
+      <div className="mx-auto max-w-7xl space-y-6 px-4 py-6">
+        <h1 className="text-2xl font-bold">Live NBA Scoreboard</h1>
+        <OddsTicker odds={odds} />
+        <LiveScoreboard games={games} />
+      </div>
     </main>
   );
 }

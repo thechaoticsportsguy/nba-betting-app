@@ -175,6 +175,7 @@ export interface PlayerProfile {
   country?: string;
 }
 
+
 export interface BoxScorePlayer {
   playerId: number;
   playerName: string;
@@ -226,6 +227,8 @@ export type MergedGame = {
 
 // legacy app types kept for compatibility with old mock-data components/routes
 export type GameStatus = 'LIVE' | 'FINAL' | 'UPCOMING';
+export type GameStatus = 'LIVE' | 'FINAL' | 'UPCOMING';
+
 export interface Team {
   id: string;
   name: string;
@@ -233,6 +236,7 @@ export interface Team {
   teamLogo: string;
   newsTag: string;
 }
+
 export interface Game {
   id: string;
   awayTeamId: string;
@@ -244,6 +248,7 @@ export interface Game {
   status: GameStatus;
   featured: boolean;
 }
+
 export interface Player {
   id: string;
   name: string;
@@ -253,6 +258,7 @@ export interface Player {
   rebounds: number;
   assists: number;
 }
+
 export interface NewsArticle {
   id: string;
   headline: string;
@@ -261,10 +267,68 @@ export interface NewsArticle {
   articleImage: string;
   publishedAt: string;
 }
+
 export interface EnrichedGame extends Game {
   awayTeam: Team;
   homeTeam: Team;
 }
 export interface EnrichedPlayer extends Player {
   team: Team;
+}
+
+export interface EnrichedPlayer extends Player {
+  team: Team;
+}
+
+export interface NormalizedLiveGame {
+  id: string;
+  status: 'scheduled' | 'in' | 'post' | 'pre';
+  shortStatus: string;
+  startTime: string;
+  startTimeET: string;
+  period?: number;
+  clock?: string;
+  broadcast?: string;
+  venue?: string;
+  homeTeam: {
+    id: string;
+    name: string;
+    abbreviation: string;
+    logo: string;
+    score: number;
+  };
+  awayTeam: {
+    id: string;
+    name: string;
+    abbreviation: string;
+    logo: string;
+    score: number;
+  };
+}
+
+export interface NormalizedOddsGame {
+  id: string;
+  commenceTime: string;
+  homeTeam: string;
+  awayTeam: string;
+  bookmakers: {
+    key: string;
+    title: string;
+    markets: {
+      key: 'h2h' | 'spreads' | 'totals' | string;
+      outcomes: {
+        name: string;
+        price: number;
+        point?: number;
+      }[];
+    }[];
+  }[];
+}
+
+export interface PlayerLog {
+  gameId: number;
+  gameDate: string;
+  pts: number;
+  reb: number;
+  ast: number;
 }
