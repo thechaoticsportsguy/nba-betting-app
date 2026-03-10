@@ -2,6 +2,11 @@ import Link from 'next/link';
 import { PlayerProfile } from '@/lib/types';
 import { normalizePlayerProfile } from '@/lib/balldontlie';
 
+const BALLDONTLIE_KEY = process.env.BALLDONTLIE_API_KEY;
+
+async function getPlayer(id: string): Promise<PlayerProfile | null> {
+  if (!BALLDONTLIE_KEY) return null;
+
 const BALLDONTLIE_KEY = process.env.BALLDONTLIE_API_KEY ?? '5961d28b-ac82-4980-ba1e-de7454c1511a';
 
 async function getPlayer(id: string): Promise<PlayerProfile | null> {

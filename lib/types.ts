@@ -68,6 +68,7 @@ export interface MarketOutcome {
   name: string;
   price?: number;
   point?: number;
+  description?: string;
 }
 
 export interface BookmakerOdds {
@@ -77,6 +78,10 @@ export interface BookmakerOdds {
     h2h: MarketOutcome[];
     spreads: MarketOutcome[];
     totals: MarketOutcome[];
+    player_points?: MarketOutcome[];
+    player_rebounds?: MarketOutcome[];
+    player_assists?: MarketOutcome[];
+    player_threes?: MarketOutcome[];
   };
 }
 
@@ -105,6 +110,42 @@ export interface OddsGame {
 
 export interface OddsResponse {
   games: OddsGame[];
+}
+
+export interface PlayerAnalysis {
+  playerName: string;
+  team: string;
+  opponent: string;
+  game: string;
+  gameTime: string;
+  marketType: 'points' | 'rebounds' | 'assists' | 'threes';
+  sportsbook: string;
+  line: number;
+  recent5: number;
+  recent10: number;
+  seasonAvg: number;
+  expectedPoints?: number;
+  expectedRebounds?: number;
+  expectedAssists?: number;
+  expectedThrees?: number;
+  projectedValue: number;
+  edge: number;
+  confidence: 'High' | 'Medium' | 'Low';
+  trend: 'Heating Up' | 'Stable' | 'Volatile';
+  recommendation: 'Strong Over Look' | 'Lean Over' | 'Pass' | 'Boom/Bust';
+  boomScore: number;
+}
+
+export interface PlayerAnalysisResponse {
+  generatedAt: string;
+  source: 'odds+stats' | 'stats-fallback';
+  summary: {
+    bestPointsEdge?: PlayerAnalysis;
+    bestReboundsEdge?: PlayerAnalysis;
+    bestAssistsEdge?: PlayerAnalysis;
+    bestOverallValue?: PlayerAnalysis;
+  };
+  players: PlayerAnalysis[];
 }
 
 export interface OddsMarketTeam {

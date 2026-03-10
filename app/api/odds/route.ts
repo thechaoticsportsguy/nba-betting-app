@@ -1,11 +1,16 @@
 import { NextResponse } from 'next/server';
 import { normalizeOdds } from '@/lib/odds';
 
+const ODDS_KEY = process.env.ODDS_API_KEY;
 const ODDS_KEY = process.env.ODDS_API_KEY ?? 'b412e4d9246309c4aac12e3a6bdfee44';
 
 export const revalidate = 45;
 
 export async function GET() {
+  if (!ODDS_KEY) {
+    return NextResponse.json({ error: 'ODDS_API_KEY is not configured' }, { status: 500 });
+  }
+
   try {
     const url = new URL('https://api.the-odds-api.com/v4/sports/basketball_nba/odds');
     url.searchParams.set('apiKey', ODDS_KEY);
