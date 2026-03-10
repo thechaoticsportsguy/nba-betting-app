@@ -1,0 +1,26 @@
+[
+  {
+    "id": "n1",
+    "headline": "Lakers rally late behind veteran core",
+    "description": "Los Angeles closed on a 12-2 run in the final four minutes to swing momentum.",
+    "teamTag": "Lakers",
+    "articleImage": "/news/lakers-story.svg",
+    "publishedAt": "2026-03-10T15:40:00Z"
+  },
+  {
+    "id": "n2",
+    "headline": "Warriors bench unit sparks third-quarter push",
+    "description": "Second unit spacing and pace helped Golden State erase a double-digit deficit.",
+    "teamTag": "Warriors",
+    "articleImage": "/news/warriors-story.svg",
+    "publishedAt": "2026-03-10T15:20:00Z"
+  },
+  {
+    "id": "n3",
+    "headline": "Tatum posts another double-double",
+    "description": "Boston continues to rely on Tatum’s two-way impact during this road stretch.",
+    "teamTag": "Celtics",
+    "articleImage": "/news/celtics-story.svg",
+    "publishedAt": "2026-03-10T14:50:00Z"
+  }
+]
