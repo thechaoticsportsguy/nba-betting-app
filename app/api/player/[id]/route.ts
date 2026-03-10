@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { PlayerProfile } from '@/lib/types';
+import { normalizePlayerProfile } from '@/lib/balldontlie';
 
 const BALLDONTLIE_KEY = process.env.BALLDONTLIE_API_KEY ?? '5961d28b-ac82-4980-ba1e-de7454c1511a';
 
@@ -17,16 +17,7 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
     }
 
     const payload = await response.json();
-    const p = payload.data ?? payload;
-    const player: PlayerProfile = {
-      id: Number(p.id ?? 0),
-      firstName: p.first_name ?? '',
-      lastName: p.last_name ?? '',
-      team: p.team?.full_name ?? '',
-      position: p.position ?? ''
-    };
-
-    return NextResponse.json({ player });
+    return NextResponse.json({ player: normalizePlayerProfile(payload) });
   } catch {
     return NextResponse.json({ error: 'Unexpected error loading player' }, { status: 500 });
   }
