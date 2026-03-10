@@ -246,7 +246,6 @@ export type MergedGame = {
 
 // legacy app types kept for compatibility with old mock-data components/routes
 export type GameStatus = 'LIVE' | 'FINAL' | 'UPCOMING';
-export type GameStatus = 'LIVE' | 'FINAL' | 'UPCOMING';
 
 export interface Team {
   id: string;
@@ -295,9 +294,6 @@ export interface EnrichedPlayer extends Player {
   team: Team;
 }
 
-export interface EnrichedPlayer extends Player {
-  team: Team;
-}
 
 export interface NormalizedLiveGame {
   id: string;
