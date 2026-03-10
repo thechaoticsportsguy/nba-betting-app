@@ -40,3 +40,19 @@ npm run build
 ## Vercel
 
 Deploy normally on Vercel. The project is App Router based and uses server API routes compatible with Vercel.
+Open `http://localhost:3000`.
+
+## Deployment (Vercel)
+1. Push this repo.
+2. Import project in Vercel.
+3. Add all environment variables from `.env.example`.
+4. Deploy.
+
+## Rate limits / caching
+- ESPN live games: 20s cache
+- Live box scores: 20s cache
+- Odds API: 60s cache
+- API-SPORTS odds: 30m cache
+- Player/team historical endpoints: 10m to 24h cache
+
+All third-party calls go through `app/api/*` routes so no keys are exposed to the client.

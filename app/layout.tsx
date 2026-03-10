@@ -8,6 +8,13 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
+
+export const metadata: Metadata = {
+  title: 'NBA Betting Hub',
+  description: 'Live NBA games, box scores, stats, and betting lines'
+};
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <body>{children}</body>
