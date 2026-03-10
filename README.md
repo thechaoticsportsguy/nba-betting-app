@@ -1,58 +1,36 @@
-# NBA Live Hub (Next.js + TypeScript)
+# NBA Betting App (Next.js 14)
 
-A Vercel-deployable Next.js App Router project that renders:
+Live NBA dashboard with scores, box scores, stats, and betting lines.
 
-- Live NBA games
-- Team logos
-- Player headshots
-- Current score, quarter, game clock
-- Team news headlines
-- Featured game section
+## APIs integrated
+- ESPN scoreboard + summary (no key)
+- BallDontLie v2 (`BALDONTLIE_API_KEY`) for players/teams/games
+- BallDontLie live + player details (`BALLS_API_KEY`) for live box scores and bios
+- The Odds API (`ODDS_API_KEY`) for moneyline/spread/total
+- API-SPORTS (`APISPORTS_KEY`) for supplementary odds/props
+- Proprietary PP API (`PP_API_KEY`, `PP_API_URL`) for props
 
-## Stack
+## Required env vars
+Copy `.env.example` to `.env.local` and fill values.
 
-- Next.js (App Router)
-- TypeScript
-- Tailwind CSS
-- API routes (`/app/api/*`)
-- React Server Components + client refresh hook
-
-## Run locally
-
+## Local development
 ```bash
 npm install
 npm run dev
 ```
+Open `http://localhost:3000`.
 
-Build test:
+## Deployment (Vercel)
+1. Push this repo.
+2. Import project in Vercel.
+3. Add all environment variables from `.env.example`.
+4. Deploy.
 
-```bash
-npm run build
-```
+## Rate limits / caching
+- ESPN live games: 20s cache
+- Live box scores: 20s cache
+- Odds API: 60s cache
+- API-SPORTS odds: 30m cache
+- Player/team historical endpoints: 10m to 24h cache
 
-## Real-time refresh strategy
-
-`hooks/useLiveGames.ts` polls `/api/games` every 10 seconds to keep the live games grid updated.
-
-## Mock data location
-
-- `data/games.json`
-- `data/teams.json`
-- `data/players.json`
-- `data/news.json`
-
-## Replace mock data with real NBA APIs later
-
-1. Add server-side API keys to `.env.local`:
-   - `NBA_API_KEY=...`
-   - `NBA_NEWS_API_KEY=...`
-2. Update `lib/data.ts` to fetch from external providers instead of local JSON.
-3. Keep component interfaces unchanged (`lib/types.ts`) so UI does not need refactor.
-4. Add response mapping from provider payloads to local types (`Game`, `Team`, `Player`, `NewsArticle`).
-5. Keep `/app/api/*` routes as your server abstraction boundary for frontend stability.
-
-## Vercel deployment
-
-Push to GitHub and connect the repo in Vercel. Every merge to your production branch triggers:
-
-GitHub PR merge → Vercel build (`npm run build`) → redeploy.
+All third-party calls go through `app/api/*` routes so no keys are exposed to the client.

@@ -2,8 +2,8 @@ import './globals.css';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'NBA Live Hub',
-  description: 'Real-time NBA games, players, and headlines'
+  title: 'NBA Betting Hub',
+  description: 'Live NBA games, box scores, stats, and betting lines'
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

@@ -2,10 +2,11 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  color-scheme: dark;
+body {
+  @apply bg-slate-100 text-slate-900;
 }
 
-body {
-  @apply bg-slate-950 text-slate-100;
+@keyframes ticker {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
 }

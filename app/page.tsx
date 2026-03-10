@@ -1,43 +1,33 @@
-import BreakingNewsTicker from '@/components/BreakingNewsTicker';
-import FeaturedGameCard from '@/components/FeaturedGameCard';
-import LiveGamesSection from '@/components/LiveGamesSection';
+export const dynamic = 'force-dynamic';
+import { headers } from 'next/headers';
 import Navbar from '@/components/Navbar';
-import NewsCard from '@/components/NewsCard';
-import PlayerCard from '@/components/PlayerCard';
-import { getEnrichedGames, getEnrichedPlayers, getNews } from '@/lib/data';
+import LiveScoreboard from '@/components/LiveScoreboard';
+import OddsTicker from '@/components/OddsTicker';
+
+async function getLiveGames(baseUrl: string) {
+  const res = await fetch(`${baseUrl}/api/live-games`, { next: { revalidate: 30 } });
+  if (!res.ok) return { games: [] };
+  return res.json();
+}
+
+async function getOdds(baseUrl: string) {
+  const res = await fetch(`${baseUrl}/api/odds`, { next: { revalidate: 30 } });
+  if (!res.ok) return { odds: [] };
+  return res.json();
+}
 
 export default async function HomePage() {
-  const [games, players, news] = await Promise.all([getEnrichedGames(), getEnrichedPlayers(), getNews()]);
-
-  const featuredGame = games.find((game) => game.featured) ?? games[0];
+  const host = headers().get('host') ?? 'localhost:3000';
+  const baseUrl = /^(localhost|127\.0\.0\.1)/.test(host) ? `http://${host}` : `https://${host}`;
+  const [{ games }, { odds }] = await Promise.all([getLiveGames(baseUrl), getOdds(baseUrl)]);
 
   return (
     <main>
       <Navbar />
-      <div className="mx-auto flex max-w-7xl flex-col gap-8 px-4 py-6">
-        <BreakingNewsTicker news={news} />
-
-        {featuredGame ? <FeaturedGameCard game={featuredGame} players={players} /> : null}
-
-        <LiveGamesSection initialGames={games} />
-
-        <section className="space-y-4">
-          <h2 className="text-xl font-semibold">Player Highlights</h2>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {players.map((player) => (
-              <PlayerCard key={player.id} player={player} />
-            ))}
-          </div>
-        </section>
-
-        <section className="space-y-4">
-          <h2 className="text-xl font-semibold">NBA News Feed</h2>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {news.map((article) => (
-              <NewsCard key={article.id} article={article} />
-            ))}
-          </div>
-        </section>
+      <div className="mx-auto max-w-7xl space-y-6 px-4 py-6">
+        <h1 className="text-2xl font-bold">Live NBA Scoreboard</h1>
+        <OddsTicker odds={odds} />
+        <LiveScoreboard games={games} />
       </div>
     </main>
   );
