@@ -1,8 +1,7 @@
-import sys
-import subprocess
 import time
+from html import escape
 from datetime import datetime, timezone
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import pandas as pd
 import requests
@@ -59,25 +58,15 @@ MARKET_CONFIG = {
     "player_assists": {"label": "Assists", "column": "AST"},
 }
 
-# --- DEPENDENCY INSTALLER ---
-@st.cache_resource
-def install_dependencies() -> None:
-    try:
-        import nba_api  # noqa: F401
-    except ImportError:
-        subprocess.check_call([sys.executable, "-m", "pip", "install", "nba_api"])
-
-
-install_dependencies()
-from nba_api.stats.endpoints import leaguedashteamstats, playergamelog  # noqa: E402
-from nba_api.stats.static import players  # noqa: E402
+from nba_api.stats.endpoints import leaguedashteamstats, playergamelog
+from nba_api.stats.static import players
 
 
 # --- SIDEBAR ---
 st.sidebar.markdown("## ⚙️ Analysis Settings")
 api_key = st.sidebar.text_input(
     "The-Odds-API Key",
-    value="b412e4d9246309c4aac12e3a6bdfee44",
+    value="",
     type="password",
     help="Keep this key private. This app uses it directly for live market data.",
 )
@@ -102,13 +91,15 @@ st.markdown(
 )
 
 
-def safe_get_json(url: str, params: dict, timeout: int = 20) -> Tuple[Optional[dict], Optional[str], int]:
+def safe_get_json(url: str, params: Dict[str, str], timeout: int = 20) -> Tuple[Optional[Any], Optional[str], int]:
     try:
         response = requests.get(url, params=params, timeout=timeout)
         status_code = response.status_code
         if status_code != 200:
             return None, f"HTTP {status_code}", status_code
         return response.json(), None, status_code
+    except ValueError as exc:
+        return None, f"Invalid JSON response: {exc}", 0
     except requests.RequestException as exc:
         return None, str(exc), 0
 
@@ -166,16 +157,29 @@ def get_odds(api_key: str, market: str, bookmaker: str) -> Tuple[pd.DataFrame, L
             validation_notes.append(f"Skipped game {away} @ {home} ({event_err}).")
             continue
 
-        bookmakers = event_payload.get("bookmakers", []) if isinstance(event_payload, dict) else []
+        if not isinstance(event_payload, dict):
+            validation_notes.append(f"Unexpected event payload format for {away} @ {home}.")
+            continue
+
+        bookmakers = event_payload.get("bookmakers", [])
         if not bookmakers:
             validation_notes.append(f"No bookmaker market data returned for {away} @ {home}.")
             continue
 
         for book in bookmakers:
+            if not isinstance(book, dict):
+                validation_notes.append(f"Skipped malformed bookmaker entry for {away} @ {home}.")
+                continue
             for market_obj in book.get("markets", []):
+                if not isinstance(market_obj, dict):
+                    validation_notes.append(f"Skipped malformed market entry for {away} @ {home}.")
+                    continue
                 if market_obj.get("key") != market:
                     continue
                 for outcome in market_obj.get("outcomes", []):
+                    if not isinstance(outcome, dict):
+                        validation_notes.append(f"Skipped malformed outcome entry for {away} @ {home}.")
+                        continue
                     player_name = outcome.get("description")
                     line = outcome.get("point")
                     odds_price = outcome.get("price")
@@ -197,8 +201,8 @@ def get_odds(api_key: str, market: str, bookmaker: str) -> Tuple[pd.DataFrame, L
                             "Line": float(line),
                             "Odds": int(odds_price),
                             "Matchup": f"{away} @ {home}",
-                            "GameTimeUTC": commence,
-                            "Bookmaker": book.get("title", bookmaker.title()),
+                            "GameTimeUTC": commence or "Unknown",
+                            "Bookmaker": str(book.get("title") or bookmaker.title()),
                             "OddsCheckedAtUTC": fetched_at.isoformat(),
                             "EventStatusCode": status_code,
                         }
@@ -229,7 +233,8 @@ def resolve_player_id(player_name: str) -> Optional[int]:
     for candidate in candidates:
         matches = players.find_players_by_full_name(candidate)
         if matches:
-            return matches[0]["id"]
+            active_matches = [m for m in matches if m.get("is_active")]
+            return (active_matches[0] if active_matches else matches[0])["id"]
     return None
 
 
@@ -318,7 +323,11 @@ if run_clicked:
         st.stop()
 
     status.info("Cross-checking player data and computing confidence scores...")
-    deduped_props = odds_df.sort_values("Odds Checked AtUTC" if "Odds Checked AtUTC" in odds_df.columns else "OddsCheckedAtUTC", ascending=False).drop_duplicates(subset=["Player", "Matchup"])
+    deduped_props = (
+        odds_df.assign(OddsCheckedAtUTC=pd.to_datetime(odds_df["OddsCheckedAtUTC"], errors="coerce"))
+        .sort_values("OddsCheckedAtUTC", ascending=False)
+        .drop_duplicates(subset=["Player", "Matchup"])
+    )
     results: List[dict] = []
     progress = st.progress(0.0)
 
@@ -378,7 +387,7 @@ if run_clicked:
         with st.expander("Validation findings", expanded=True):
             if notes:
                 for note in notes[:120]:
-                    st.markdown(f"<span class='meta-chip warn-chip'>⚠ {note}</span>", unsafe_allow_html=True)
+                    st.markdown(f"<span class='meta-chip warn-chip'>⚠ {escape(note)}</span>", unsafe_allow_html=True)
             else:
                 st.markdown("<span class='meta-chip'>✅ No API data validation issues detected.</span>", unsafe_allow_html=True)
 
