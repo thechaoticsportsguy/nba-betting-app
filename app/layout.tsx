@@ -1,15 +1,19 @@
 import './globals.css';
 import type { Metadata } from 'next';
+import Navbar from '@/components/Navbar';
 
 export const metadata: Metadata = {
   title: 'NBA Live Hub',
-  description: 'Real-time NBA games, players, and headlines'
+  description: 'Real-time NBA scores, stats, and betting lines',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <Navbar />
+        <div className="mx-auto max-w-7xl px-4 py-6">{children}</div>
+      </body>
     </html>
   );
 }
