@@ -23,7 +23,7 @@ export default async function BettingPage() {
       <Navbar />
       <div className="mx-auto max-w-7xl space-y-4 px-4 py-6">
         <h1 className="text-2xl font-bold">Betting Dashboard</h1>
-        <BettingDashboard odds={odds?.odds ?? []} propsData={{ pp, apisports }} />
+        <BettingDashboard odds={odds?.games ?? []} propsData={{ pp, apisports }} />
       </div>
     </main>
   );
