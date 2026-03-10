@@ -1,0 +1,35 @@
+[
+  {
+    "id": "game-1",
+    "awayTeamId": "lal",
+    "homeTeamId": "gsw",
+    "awayScore": 98,
+    "homeScore": 102,
+    "quarter": "Q4",
+    "gameClock": "02:14",
+    "status": "LIVE",
+    "featured": true
+  },
+  {
+    "id": "game-2",
+    "awayTeamId": "bos",
+    "homeTeamId": "mil",
+    "awayScore": 111,
+    "homeScore": 111,
+    "quarter": "Q3",
+    "gameClock": "05:48",
+    "status": "LIVE",
+    "featured": false
+  },
+  {
+    "id": "game-3",
+    "awayTeamId": "mil",
+    "homeTeamId": "lal",
+    "awayScore": 0,
+    "homeScore": 0,
+    "quarter": "",
+    "gameClock": "7:30 PM ET",
+    "status": "UPCOMING",
+    "featured": false
+  }
+]
