@@ -1,23 +1,45 @@
-# NBA Betting App (Next.js 14)
+# NBA Live Dashboard (Next.js + TypeScript + Tailwind)
 
-Live NBA dashboard with scores, box scores, stats, and betting lines.
+This project uses Next.js App Router and server API routes to render:
 
-## APIs integrated
-- ESPN scoreboard + summary (no key)
-- BallDontLie v2 (`BALDONTLIE_API_KEY`) for players/teams/games
-- BallDontLie live + player details (`BALLS_API_KEY`) for live box scores and bios
-- The Odds API (`ODDS_API_KEY`) for moneyline/spread/total
-- API-SPORTS (`APISPORTS_KEY`) for supplementary odds/props
-- Proprietary PP API (`PP_API_KEY`, `PP_API_URL`) for props
+- Live games (ESPN scoreboard)
+- Clickable game cards
+- Right-side live box score panel
+- Player stat tables
+- Betting markets (moneyline, spread, totals)
 
-## Required env vars
-Copy `.env.example` to `.env.local` and fill values.
+## API Routes
 
-## Local development
+- `/api/live-games` → ESPN scoreboard (refresh target: 15s)
+- `/api/live-boxscore` → BallDontLie live box scores (refresh target: 10s)
+- `/api/player/[id]` → BallDontLie player profile
+- `/api/odds` → The Odds API (refresh target: 30s)
+
+## Environment Variables
+
+Create `.env.local`:
+
+```bash
+BALLDONTLIE_API_KEY=5961d28b-ac82-4980-ba1e-de7454c1511a
+ODDS_API_KEY=b412e4d9246309c4aac12e3a6bdfee44
+```
+
+## Run
+
 ```bash
 npm install
 npm run dev
 ```
+
+## Build
+
+```bash
+npm run build
+```
+
+## Vercel
+
+Deploy normally on Vercel. The project is App Router based and uses server API routes compatible with Vercel.
 Open `http://localhost:3000`.
 
 ## Deployment (Vercel)
