@@ -1,0 +1,29 @@
+[
+  {
+    "id": "p1",
+    "name": "LeBron James",
+    "teamId": "lal",
+    "playerHeadshot": "/headshots/lebron.svg",
+    "points": 28,
+    "rebounds": 9,
+    "assists": 8
+  },
+  {
+    "id": "p2",
+    "name": "Stephen Curry",
+    "teamId": "gsw",
+    "playerHeadshot": "/headshots/curry.svg",
+    "points": 31,
+    "rebounds": 5,
+    "assists": 7
+  },
+  {
+    "id": "p3",
+    "name": "Jayson Tatum",
+    "teamId": "bos",
+    "playerHeadshot": "/headshots/tatum.svg",
+    "points": 26,
+    "rebounds": 10,
+    "assists": 4
+  }
+]
