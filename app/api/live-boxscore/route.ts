@@ -1,0 +1,29 @@
+import { NextResponse } from 'next/server';
+import { normalizeLiveBoxScores } from '@/lib/balldontlie';
+
+const BALLDONTLIE_BOX_URL = 'https://api.balldontlie.io/v1/box_scores/live';
+const BALLDONTLIE_KEY = process.env.BALLDONTLIE_API_KEY;
+
+export const revalidate = 12;
+
+export async function GET() {
+  if (!BALLDONTLIE_KEY) {
+    return NextResponse.json({ games: [] });
+  }
+
+  try {
+    const response = await fetch(BALLDONTLIE_BOX_URL, {
+      headers: { Authorization: BALLDONTLIE_KEY },
+      next: { revalidate: 12 }
+    });
+
+    if (!response.ok) {
+      return NextResponse.json({ error: 'Failed to fetch live box scores' }, { status: 502 });
+    }
+
+    const payload = await response.json();
+    return NextResponse.json(normalizeLiveBoxScores(payload));
+  } catch {
+    return NextResponse.json({ error: 'Unexpected error loading box score' }, { status: 500 });
+  }
+}
