@@ -6,6 +6,7 @@ import DashboardTabs, { DashboardTab } from '@/components/DashboardTabs';
 import PlayerAnalysisFilters, { AnalysisFilterState } from '@/components/PlayerAnalysisFilters';
 import PlayerAnalysisTable from '@/components/PlayerAnalysisTable';
 import { PlayerAnalysis, PlayerAnalysisResponse } from '@/lib/types';
+import BetTracker from '@/components/BetTracker';
 
 /* ─── types ─── */
 type LiveGame = {
@@ -403,6 +404,9 @@ export default function BettingDashboard({ odds, propsData }: { odds: any[]; pro
           )}
         </div>
       )}
+
+      {/* ═══ BET TRACKER ═══ */}
+      {activeTab === 'tracker' && <BetTracker />}
     </div>
   );
 }
