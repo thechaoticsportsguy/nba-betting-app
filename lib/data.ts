@@ -1,8 +1,13 @@
-import games from '@/data/games.json';
-import news from '@/data/news.json';
-import players from '@/data/players.json';
-import teams from '@/data/teams.json';
+import gamesData from '@/data/games.json';
+import newsData from '@/data/news.json';
+import playersData from '@/data/players.json';
+import teamsData from '@/data/teams.json';
 import { EnrichedGame, EnrichedPlayer, Game, NewsArticle, Player, Team } from '@/lib/types';
+
+const teams = teamsData as Team[];
+const games = gamesData as Game[];
+const players = playersData as Player[];
+const news = newsData as NewsArticle[];
 
 export const getTeams = async (): Promise<Team[]> => teams;
 
