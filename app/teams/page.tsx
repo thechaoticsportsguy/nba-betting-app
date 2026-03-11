@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
-import { headers } from 'next/headers';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
+import { getBaseUrl } from '@/lib/server/baseUrl';
 import teamsData from '@/data/teams.json';
 import playersData from '@/data/players.json';
 import { TEAM_META } from '@/lib/bdlTeamIds';
@@ -17,6 +17,8 @@ const EAST = ['ATL','BOS','BKN','CHA','CHI','CLE','DET','IND','MIA','MIL','NYK',
 const WEST = ['DAL','DEN','GSW','HOU','LAC','LAL','MEM','MIN','NOP','OKC','PHX','POR','SAC','SAS','UTA'];
 
 export default async function TeamsPage() {
+  const baseUrl = getBaseUrl();
+  const { teams } = await getTeams(baseUrl);
   const host = headers().get('host') ?? 'localhost:3000';
   const baseUrl = /^(localhost|127\.0\.0\.1)/.test(host) ? `http://${host}` : `https://${host}`;
 
