@@ -19,10 +19,13 @@ export default async function BettingPage() {
   ]);
 
   return (
-    <main>
+    <main className="min-h-screen bg-black">
       <Navbar />
-      <div className="mx-auto max-w-7xl space-y-4 px-4 py-6">
-        <h1 className="text-2xl font-bold">Betting Dashboard</h1>
+      <div className="mx-auto max-w-7xl px-4 py-6">
+        <div className="mb-6">
+          <h1 className="text-3xl font-extrabold tracking-tight text-white">Betting Dashboard</h1>
+          <p className="mt-1 text-sm text-slate-500">Live games · Odds · Player props · Full roster</p>
+        </div>
         <BettingDashboard odds={odds?.games ?? []} propsData={{ pp, apisports }} />
       </div>
     </main>

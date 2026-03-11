@@ -1,25 +1,113 @@
 import { NextResponse } from 'next/server';
-import { withCache } from '@/lib/server/cache';
+import playersData from '@/data/players.json';
+import teamsData from '@/data/teams.json';
+import { BDL_TEAM_IDS, TEAM_META } from '@/lib/bdlTeamIds';
 
-const BASE = 'https://api.balldontlie.io/v2';
+const BDL_KEY = process.env.BALLDONTLIE_API_KEY;
+const BDL_BASE = 'https://api.balldontlie.io/v1';
+
+// Get local team + players from our JSON files (always works, no API key needed)
+function getLocalTeamData(abbrev: string) {
+  const aUpper = abbrev.toUpperCase();
+  const team = (teamsData as any[]).find(
+    (t) => t.id?.toLowerCase() === abbrev.toLowerCase() || t.abbreviation?.toUpperCase() === aUpper
+  );
+  const players = (playersData as any[]).filter(
+    (p) => p.teamId?.toLowerCase() === abbrev.toLowerCase()
+  );
+  const meta = TEAM_META[aUpper] ?? { conference: 'Unknown', division: 'Unknown' };
+  return { team, players, meta };
+}
 
 export async function GET(_: Request, { params }: { params: { id: string } }) {
-  const key = process.env.BALDONTLIE_API_KEY;
-  if (!key) return NextResponse.json({ error: 'Missing BALDONTLIE_API_KEY' }, { status: 500 });
+  const rawId = params.id; // could be 'atl', 'bos', or a numeric string
+  const abbrev = rawId.length <= 4 ? rawId.toUpperCase() : null;
+  const bdlId = abbrev ? BDL_TEAM_IDS[abbrev] : parseInt(rawId, 10);
 
-  try {
-    const teamData = await withCache(`team-${params.id}`, 900, async () => {
-      const [team, games, roster] = await Promise.all([
-        fetch(`${BASE}/teams/${params.id}`, { headers: { Authorization: key }, next: { revalidate: 3600 } }).then((r) => r.json()),
-        fetch(`${BASE}/games?team_ids[]=${params.id}&per_page=10`, { headers: { Authorization: key }, next: { revalidate: 900 } }).then((r) => r.json()),
-        fetch(`${BASE}/players?team_ids[]=${params.id}&per_page=100`, { headers: { Authorization: key }, next: { revalidate: 3600 } }).then((r) => r.json())
+  const { team: localTeam, players: localPlayers, meta } = getLocalTeamData(abbrev ?? rawId);
+
+  // Attempt live BallDontLie fetch for richer data (roster + schedule)
+  if (BDL_KEY && bdlId) {
+    try {
+      const [teamRes, rosterRes, gamesRes] = await Promise.allSettled([
+        fetch(`${BDL_BASE}/teams/${bdlId}`, {
+          headers: { Authorization: BDL_KEY },
+          next: { revalidate: 3600 }
+        }),
+        fetch(`${BDL_BASE}/players/active?team_ids[]=${bdlId}&per_page=50`, {
+          headers: { Authorization: BDL_KEY },
+          next: { revalidate: 3600 }
+        }),
+        fetch(
+          `${BDL_BASE}/games?team_ids[]=${bdlId}&per_page=10&seasons[]=2024`,
+          { headers: { Authorization: BDL_KEY }, next: { revalidate: 900 } }
+        )
       ]);
 
-      return { team: team.data, recentGames: games.data ?? [], roster: roster.data ?? [] };
-    });
+      const bdlTeam = teamRes.status === 'fulfilled' && teamRes.value.ok
+        ? (await teamRes.value.json()).data
+        : null;
+      const bdlRoster = rosterRes.status === 'fulfilled' && rosterRes.value.ok
+        ? (await rosterRes.value.json()).data ?? []
+        : [];
+      const bdlGames = gamesRes.status === 'fulfilled' && gamesRes.value.ok
+        ? (await gamesRes.value.json()).data ?? []
+        : [];
 
-    return NextResponse.json(teamData);
-  } catch (error) {
-    return NextResponse.json({ error: (error as Error).message }, { status: 500 });
+      if (bdlTeam || bdlRoster.length) {
+        return NextResponse.json({
+          source: 'balldontlie',
+          team: {
+            id: rawId,
+            abbreviation: abbrev ?? rawId,
+            name: bdlTeam?.full_name ?? localTeam?.name ?? abbrev,
+            conference: bdlTeam?.conference ?? meta.conference,
+            division: bdlTeam?.division ?? meta.division,
+          },
+          roster: bdlRoster.map((p: any) => ({
+            id: p.id,
+            name: `${p.first_name} ${p.last_name}`,
+            position: p.position ?? '—',
+            points: 0,
+            rebounds: 0,
+            assists: 0,
+          })),
+          recentGames: bdlGames.map((g: any) => ({
+            id: g.id,
+            date: g.date,
+            homeTeam: g.home_team?.full_name ?? 'Home',
+            homeScore: g.home_team_score,
+            awayTeam: g.visitor_team?.full_name ?? 'Away',
+            awayScore: g.visitor_team_score,
+            status: g.status,
+          })),
+          localPlayers,
+        });
+      }
+    } catch {
+      // fall through to local data
+    }
   }
+
+  // Local-only fallback (always works without API key)
+  return NextResponse.json({
+    source: 'local',
+    team: {
+      id: rawId,
+      abbreviation: abbrev ?? rawId,
+      name: localTeam?.name ?? rawId,
+      conference: meta.conference,
+      division: meta.division,
+    },
+    roster: localPlayers.map((p: any) => ({
+      id: p.id,
+      name: p.name,
+      position: '—',
+      points: p.points,
+      rebounds: p.rebounds,
+      assists: p.assists,
+    })),
+    recentGames: [],
+    localPlayers,
+  });
 }
