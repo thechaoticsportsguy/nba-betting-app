@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic';
-import { headers } from 'next/headers';
 import Navbar from '@/components/Navbar';
+import { getBaseUrl } from '@/lib/server/baseUrl';
 import GameTabs from '@/components/GameTabs';
 
 async function getJson(baseUrl: string, path: string) {
@@ -10,8 +10,7 @@ async function getJson(baseUrl: string, path: string) {
 }
 
 export default async function GamePage({ params }: { params: { gameId: string } }) {
-  const host = headers().get('host') ?? 'localhost:3000';
-  const baseUrl = /^(localhost|127\.0\.0\.1)/.test(host) ? `http://${host}` : `https://${host}`;
+  const baseUrl = getBaseUrl();
 
   const [summary, liveBoxScores, odds, apisports, pp] = await Promise.all([
     getJson(baseUrl, `/api/game-summary/${params.gameId}`),

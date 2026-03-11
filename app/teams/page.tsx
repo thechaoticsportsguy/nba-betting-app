@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
-import { headers } from 'next/headers';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
+import { getBaseUrl } from '@/lib/server/baseUrl';
 
 async function getTeams(baseUrl: string) {
   const res = await fetch(`${baseUrl}/api/teams`, { next: { revalidate: 3600 } });
@@ -10,8 +10,7 @@ async function getTeams(baseUrl: string) {
 }
 
 export default async function TeamsPage() {
-  const host = headers().get('host') ?? 'localhost:3000';
-  const baseUrl = /^(localhost|127\.0\.0\.1)/.test(host) ? `http://${host}` : `https://${host}`;
+  const baseUrl = getBaseUrl();
   const { teams } = await getTeams(baseUrl);
 
   return (

@@ -7,7 +7,7 @@ export const revalidate = 45;
 
 export async function GET() {
   if (!ODDS_KEY) {
-    return NextResponse.json({ error: 'ODDS_API_KEY is not configured' }, { status: 500 });
+    return NextResponse.json({ games: [], warning: 'ODDS_API_KEY is not configured' });
   }
 
   try {
@@ -19,12 +19,12 @@ export async function GET() {
 
     const response = await fetch(url.toString(), { next: { revalidate: 45 } });
     if (!response.ok) {
-      return NextResponse.json({ error: 'Failed to fetch odds' }, { status: 502 });
+      return NextResponse.json({ games: [], error: 'Failed to fetch odds', status: response.status }, { status: 502 });
     }
 
     const payload = await response.json();
     return NextResponse.json(normalizeOdds(payload));
   } catch {
-    return NextResponse.json({ error: 'Unexpected error loading odds' }, { status: 500 });
+    return NextResponse.json({ games: [], error: 'Unexpected error loading odds' }, { status: 500 });
   }
 }
