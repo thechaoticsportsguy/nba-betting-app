@@ -1,0 +1,43 @@
+// Maps NBA team abbreviations to their BallDontLie API v1 numeric IDs
+export const BDL_TEAM_IDS: Record<string, number> = {
+  ATL: 1,  BOS: 2,  BKN: 3,  CHA: 4,  CHI: 5,
+  CLE: 6,  DAL: 7,  DEN: 8,  DET: 9,  GSW: 10,
+  HOU: 11, IND: 12, LAC: 13, LAL: 14, MEM: 15,
+  MIA: 16, MIL: 17, MIN: 18, NOP: 19, NYK: 20,
+  OKC: 21, ORL: 22, PHI: 23, PHX: 24, POR: 25,
+  SAC: 26, SAS: 27, TOR: 28, UTA: 29, WAS: 30,
+};
+
+// Maps abbreviation → conference and division
+export const TEAM_META: Record<string, { conference: 'East' | 'West'; division: string }> = {
+  ATL: { conference: 'East', division: 'Southeast' },
+  BOS: { conference: 'East', division: 'Atlantic' },
+  BKN: { conference: 'East', division: 'Atlantic' },
+  CHA: { conference: 'East', division: 'Southeast' },
+  CHI: { conference: 'East', division: 'Central' },
+  CLE: { conference: 'East', division: 'Central' },
+  DAL: { conference: 'West', division: 'Southwest' },
+  DEN: { conference: 'West', division: 'Northwest' },
+  DET: { conference: 'East', division: 'Central' },
+  GSW: { conference: 'West', division: 'Pacific' },
+  HOU: { conference: 'West', division: 'Southwest' },
+  IND: { conference: 'East', division: 'Central' },
+  LAC: { conference: 'West', division: 'Pacific' },
+  LAL: { conference: 'West', division: 'Pacific' },
+  MEM: { conference: 'West', division: 'Southwest' },
+  MIA: { conference: 'East', division: 'Southeast' },
+  MIL: { conference: 'East', division: 'Central' },
+  MIN: { conference: 'West', division: 'Northwest' },
+  NOP: { conference: 'West', division: 'Southwest' },
+  NYK: { conference: 'East', division: 'Atlantic' },
+  OKC: { conference: 'West', division: 'Northwest' },
+  ORL: { conference: 'East', division: 'Southeast' },
+  PHI: { conference: 'East', division: 'Atlantic' },
+  PHX: { conference: 'West', division: 'Pacific' },
+  POR: { conference: 'West', division: 'Northwest' },
+  SAC: { conference: 'West', division: 'Pacific' },
+  SAS: { conference: 'West', division: 'Southwest' },
+  TOR: { conference: 'East', division: 'Atlantic' },
+  UTA: { conference: 'West', division: 'Northwest' },
+  WAS: { conference: 'East', division: 'Southeast' },
+};

@@ -36,6 +36,11 @@ export async function GET() {
   try {
     const [offers, liveRes] = await Promise.all([
       fetchOddsPlayerProps(ODDS_KEY),
+    const [oddsRes, liveRes] = await Promise.allSettled([
+      fetch(
+        `https://api.the-odds-api.com/v4/sports/basketball_nba/odds?regions=us&markets=player_points,player_rebounds,player_assists,player_threes&oddsFormat=american&apiKey=${ODDS_KEY}`,
+        { next: { revalidate: 30 } }
+      ),
       BALLDONTLIE_KEY
         ? fetch('https://api.balldontlie.io/v1/box_scores/live', {
             headers: { Authorization: BALLDONTLIE_KEY },
@@ -45,6 +50,8 @@ export async function GET() {
     ]);
 
     const liveData = liveRes.ok ? await liveRes.json() : { data: [] };
+    const oddsData = oddsRes.status === 'fulfilled' && oddsRes.value.ok ? await oddsRes.value.json() : [];
+    const liveData = liveRes.status === 'fulfilled' && liveRes.value.ok ? await liveRes.value.json() : { data: [] };
 
     const liveMap = new Map<string, { pts: number; reb: number; ast: number; fg3m: number }>();
     for (const g of Array.isArray(liveData.data) ? liveData.data : []) {
@@ -96,6 +103,51 @@ export async function GET() {
         sportsbook: offer.sportsbook,
         recommendation: edge >= 3 ? 'Strong Over' : 'Lean Over'
       });
+    for (const game of Array.isArray(oddsData) ? oddsData : []) {
+      const matchup = `${game.away_team ?? 'Away'} vs ${game.home_team ?? 'Home'}`;
+      for (const book of Array.isArray(game.bookmakers) ? game.bookmakers : []) {
+        const sportsbook = String(book.title ?? 'Unknown');
+        for (const market of Array.isArray(book.markets) ? book.markets : []) {
+          const statType = marketToStat(String(market.key ?? ''));
+          if (!statType) continue;
+
+          for (const out of Array.isArray(market.outcomes) ? market.outcomes : []) {
+            const player = String(out.description ?? out.name ?? '').trim();
+            const line = Number(out.point ?? NaN);
+            if (!player || Number.isNaN(line)) continue;
+
+            const live = liveMap.get(player.toLowerCase());
+            const fb = fallback.find((p) => p.name.toLowerCase() === player.toLowerCase());
+            const base =
+              statType === 'PTS' ? fb?.points ?? live?.pts ?? 0 :
+              statType === 'REB' ? fb?.rebounds ?? live?.reb ?? 0 :
+              statType === 'AST' ? fb?.assists ?? live?.ast ?? 0 :
+              live?.fg3m ?? 1.8;
+            const liveVal =
+              statType === 'PTS' ? live?.pts ?? base :
+              statType === 'REB' ? live?.reb ?? base :
+              statType === 'AST' ? live?.ast ?? base :
+              live?.fg3m ?? base;
+
+            const recentAvg = Number((base * 0.75 + liveVal * 0.25).toFixed(2));
+            if (recentAvg <= line) continue;
+            const edge = Number((recentAvg - line).toFixed(2));
+
+            players.push({
+              player,
+              team: game.away_team ?? 'N/A',
+              game: matchup,
+              statType,
+              line,
+              recentAvg,
+              edge,
+              odds: typeof out.price === 'number' ? out.price : null,
+              sportsbook,
+              recommendation: edge >= 3 ? 'Strong Over' : 'Lean Over'
+            });
+          }
+        }
+      }
     }
 
     const deduped = Object.values(
