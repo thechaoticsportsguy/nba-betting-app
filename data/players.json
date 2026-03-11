@@ -1,4 +1,31 @@
 [
+  {
+    "id": "p1",
+    "name": "LeBron James",
+    "teamId": "lal",
+    "playerHeadshot": "/headshots/lebron.svg",
+    "points": 28,
+    "rebounds": 9,
+    "assists": 8
+  },
+  {
+    "id": "p2",
+    "name": "Stephen Curry",
+    "teamId": "gsw",
+    "playerHeadshot": "/headshots/curry.svg",
+    "points": 31,
+    "rebounds": 5,
+    "assists": 7
+  },
+  {
+    "id": "p3",
+    "name": "Jayson Tatum",
+    "teamId": "bos",
+    "playerHeadshot": "/headshots/tatum.svg",
+    "points": 26,
+    "rebounds": 10,
+    "assists": 4
+  }
   {"id":"atl-1","name":"Trae Young","teamId":"atl","playerHeadshot":"","points":25.7,"rebounds":3.3,"assists":10.8},
   {"id":"atl-2","name":"Dejounte Murray","teamId":"atl","playerHeadshot":"","points":21.4,"rebounds":5.3,"assists":6.1},
   {"id":"bos-1","name":"Jayson Tatum","teamId":"bos","playerHeadshot":"","points":26.9,"rebounds":8.1,"assists":4.9},

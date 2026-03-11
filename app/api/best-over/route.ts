@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import playersData from '@/data/players.json';
+import { fetchOddsPlayerProps } from '@/lib/oddsPlayerProps';
 
 type BestOverItem = {
   player: string;
@@ -33,6 +34,8 @@ export async function GET() {
   }
 
   try {
+    const [offers, liveRes] = await Promise.all([
+      fetchOddsPlayerProps(ODDS_KEY),
     const [oddsRes, liveRes] = await Promise.allSettled([
       fetch(
         `https://api.the-odds-api.com/v4/sports/basketball_nba/odds?regions=us&markets=player_points,player_rebounds,player_assists,player_threes&oddsFormat=american&apiKey=${ODDS_KEY}`,
@@ -46,6 +49,7 @@ export async function GET() {
         : Promise.resolve(new Response(JSON.stringify({ data: [] }), { status: 200 }))
     ]);
 
+    const liveData = liveRes.ok ? await liveRes.json() : { data: [] };
     const oddsData = oddsRes.status === 'fulfilled' && oddsRes.value.ok ? await oddsRes.value.json() : [];
     const liveData = liveRes.status === 'fulfilled' && liveRes.value.ok ? await liveRes.value.json() : { data: [] };
 
@@ -66,6 +70,39 @@ export async function GET() {
     const fallback = playersData as Array<{ name: string; points: number; rebounds: number; assists: number }>;
     const players: BestOverItem[] = [];
 
+    for (const offer of offers) {
+      const statType = marketToStat(offer.marketKey);
+      if (!statType) continue;
+
+      const live = liveMap.get(offer.playerName.toLowerCase());
+      const fb = fallback.find((p) => p.name.toLowerCase() === offer.playerName.toLowerCase());
+      const base =
+        statType === 'PTS' ? fb?.points ?? live?.pts ?? 0 :
+        statType === 'REB' ? fb?.rebounds ?? live?.reb ?? 0 :
+        statType === 'AST' ? fb?.assists ?? live?.ast ?? 0 :
+        live?.fg3m ?? 1.8;
+      const liveVal =
+        statType === 'PTS' ? live?.pts ?? base :
+        statType === 'REB' ? live?.reb ?? base :
+        statType === 'AST' ? live?.ast ?? base :
+        live?.fg3m ?? base;
+
+      const recentAvg = Number((base * 0.75 + liveVal * 0.25).toFixed(2));
+      if (recentAvg <= offer.line) continue;
+
+      const edge = Number((recentAvg - offer.line).toFixed(2));
+      players.push({
+        player: offer.playerName,
+        team: 'N/A',
+        game: `${offer.awayTeam} vs ${offer.homeTeam}`,
+        statType,
+        line: offer.line,
+        recentAvg,
+        edge,
+        odds: offer.price,
+        sportsbook: offer.sportsbook,
+        recommendation: edge >= 3 ? 'Strong Over' : 'Lean Over'
+      });
     for (const game of Array.isArray(oddsData) ? oddsData : []) {
       const matchup = `${game.away_team ?? 'Away'} vs ${game.home_team ?? 'Home'}`;
       for (const book of Array.isArray(game.bookmakers) ? game.bookmakers : []) {

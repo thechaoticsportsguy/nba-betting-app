@@ -1,4 +1,8 @@
 [
+  {"id":"lal","name":"Los Angeles Lakers","abbreviation":"LAL","teamLogo":"/logos/lakers.svg","newsTag":"Lakers"},
+  {"id":"gsw","name":"Golden State Warriors","abbreviation":"GSW","teamLogo":"/logos/warriors.svg","newsTag":"Warriors"},
+  {"id":"bos","name":"Boston Celtics","abbreviation":"BOS","teamLogo":"/logos/celtics.svg","newsTag":"Celtics"},
+  {"id":"mil","name":"Milwaukee Bucks","abbreviation":"MIL","teamLogo":"/logos/bucks.svg","newsTag":"Bucks"}
   {"id":"atl","name":"Atlanta Hawks","abbreviation":"ATL","teamLogo":"/logos/hawks.svg","newsTag":"Hawks"},
   {"id":"bos","name":"Boston Celtics","abbreviation":"BOS","teamLogo":"/logos/celtics.svg","newsTag":"Celtics"},
   {"id":"bkn","name":"Brooklyn Nets","abbreviation":"BKN","teamLogo":"/logos/nets.svg","newsTag":"Nets"},
