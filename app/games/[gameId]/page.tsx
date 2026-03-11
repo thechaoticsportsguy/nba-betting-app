@@ -20,5 +20,5 @@ export default async function GamePage({ params }: { params: { gameId: string } 
     getJson(baseUrl, '/api/pp-bets')
   ]);
 
-  return <main><Navbar /><div className="mx-auto max-w-6xl space-y-4 px-4 py-6"><h1 className="text-2xl font-bold">Game {params.gameId}</h1><GameTabs summary={summary} boxScores={liveBoxScores} betting={{ odds: odds?.odds ?? [], apisports: apisports ?? {}, pp: pp ?? {} }} /></div></main>;
+  return <main><Navbar /><div className="mx-auto max-w-6xl space-y-4 px-4 py-6"><h1 className="text-2xl font-bold">Game {params.gameId}</h1><GameTabs summary={summary} boxScores={liveBoxScores} betting={{ odds: odds?.games ?? [], apisports: apisports ?? {}, pp: pp ?? {} }} /></div></main>;
 }
